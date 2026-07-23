@@ -1,6 +1,6 @@
 "use client";
 
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
@@ -293,15 +293,9 @@ export function CameraRig({
 
   return (
     <>
-      <PerspectiveCamera
-        makeDefault
-        fov={34}
-        near={0.1}
-        far={60}
-        position={INITIAL_CAMERA_POSITION}
-      />
       <OrbitControls
         ref={controlsRef}
+        camera={camera}
         enablePan={false}
         enableDamping={false}
         minDistance={MIN_DISTANCE}
@@ -636,6 +630,12 @@ export const AirQualityGlobe = forwardRef<
           <Canvas
             dpr={constrainedDevice ? [1, 1] : [1, 1.5]}
             frameloop="demand"
+            camera={{
+              fov: 34,
+              near: 0.1,
+              far: 60,
+              position: INITIAL_CAMERA_POSITION,
+            }}
             gl={{
               alpha: false,
               antialias: !constrainedDevice,

@@ -36,7 +36,11 @@ type AirPanelProps = {
 
 type GeocodingResult = GeocodingIdentity;
 
-const parseGeocodingResults = (payload: unknown): GeocodingResult[] => {
+type GeocodingResultWithPopulation = GeocodingResult & { population: number };
+
+const parseGeocodingResults = (
+  payload: unknown,
+): GeocodingResultWithPopulation[] => {
   if (!payload || typeof payload !== "object") return [];
   const results = (payload as { results?: unknown }).results;
   if (!Array.isArray(results)) return [];
@@ -77,8 +81,38 @@ const parseGeocodingResults = (payload: unknown): GeocodingResult[] => {
       typeof entry.id === "number" || typeof entry.id === "string"
         ? entry.id
         : `${name}-${latitude}-${longitude}`;
-    return [{ id, name, latitude, longitude, country, countryCode, admin1 }];
+    const population =
+      typeof entry.population === "number" && Number.isFinite(entry.population)
+        ? entry.population
+        : 0;
+    return [
+      { id, name, latitude, longitude, country, countryCode, admin1, population },
+    ];
   });
+};
+
+// Open-Meteo's geocoding API only matches non-Latin queries (e.g. Cyrillic
+// "Київ") when language=uk, but matches Latin-script queries (e.g. "New
+// York") far more reliably as language=en — under uk it can surface a 7k
+// resident Nebraska town named "York" ahead of New York City, or miss the
+// intended city entirely. Querying both and merging, ranked by population,
+// covers users typing either script.
+const mergeGeocodingResults = (
+  payloads: unknown[],
+): GeocodingResult[] => {
+  const byId = new Map<string, GeocodingResultWithPopulation>();
+  for (const payload of payloads) {
+    for (const result of parseGeocodingResults(payload)) {
+      const key = String(result.id);
+      const existing = byId.get(key);
+      if (!existing || result.population > existing.population) {
+        byId.set(key, result);
+      }
+    }
+  }
+  return Array.from(byId.values())
+    .sort((a, b) => b.population - a.population)
+    .map(({ population, ...result }) => result);
 };
 
 const POLLUTANT_META: Record<
@@ -190,20 +224,23 @@ export function AirPanel({
       setSearchResults([]);
       setSearchState("loading");
 
-      const queryString = new URLSearchParams({
-        name: query,
-        count: "5",
-        language: "uk",
-        format: "json",
-      });
+      const fetchLanguage = (language: string) =>
+        fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?${new URLSearchParams(
+            { name: query, count: "10", language, format: "json" },
+          )}`,
+          { signal: controller.signal },
+        ).then((response) => {
+          if (!response.ok) throw new Error("Geocoding request failed");
+          return response.json();
+        });
 
       try {
-        const response = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?${queryString}`,
-          { signal: controller.signal },
-        );
-        if (!response.ok) throw new Error("Geocoding request failed");
-        const results = parseGeocodingResults(await response.json());
+        const payloads = await Promise.all([
+          fetchLanguage("uk"),
+          fetchLanguage("en"),
+        ]);
+        const results = mergeGeocodingResults(payloads).slice(0, 5);
         if (generation !== searchGenerationRef.current) return;
         setSearchResults(results);
         setSearchState(results.length === 0 ? "empty" : "idle");

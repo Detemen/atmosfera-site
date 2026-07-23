@@ -277,8 +277,10 @@ describe("air quality globe shell", () => {
       }),
     );
 
-    expect(geocodingFetch).toHaveBeenCalledOnce();
-    expect(String(geocodingFetch.mock.calls[0][0])).toContain("language=uk");
+    expect(geocodingFetch).toHaveBeenCalledTimes(2);
+    const calledUrls = geocodingFetch.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls.some((url) => url.includes("language=uk"))).toBe(true);
+    expect(calledUrls.some((url) => url.includes("language=en"))).toBe(true);
     expect(onSearchResult).toHaveBeenCalledWith({
       id: 703448,
       name: "Київ",
@@ -383,7 +385,7 @@ describe("air quality globe shell", () => {
     fireEvent.change(search, { target: { value: "Київ" } });
     fireEvent.click(screen.getByRole("button", { name: "Знайти місто" }));
     await act(async () => {
-      resolvers[0]({
+      const kyivResult = {
         results: [
           {
             id: 703448,
@@ -393,7 +395,10 @@ describe("air quality globe shell", () => {
             country: "Україна",
           },
         ],
-      });
+      };
+      resolvers[0](kyivResult);
+      resolvers[1](kyivResult);
+      await Promise.resolve();
       await Promise.resolve();
     });
     expect(
@@ -448,7 +453,7 @@ describe("air quality globe shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Знайти місто" }));
 
     await act(async () => {
-      resolvers[1]({
+      const lvivResult = {
         results: [
           {
             id: 702550,
@@ -458,7 +463,10 @@ describe("air quality globe shell", () => {
             country: "Україна",
           },
         ],
-      });
+      };
+      resolvers[2](lvivResult);
+      resolvers[3](lvivResult);
+      await Promise.resolve();
       await Promise.resolve();
     });
     expect(
@@ -466,7 +474,7 @@ describe("air quality globe shell", () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      resolvers[0]({
+      const kyivResult = {
         results: [
           {
             id: 703448,
@@ -476,7 +484,10 @@ describe("air quality globe shell", () => {
             country: "Україна",
           },
         ],
-      });
+      };
+      resolvers[0](kyivResult);
+      resolvers[1](kyivResult);
+      await Promise.resolve();
       await Promise.resolve();
     });
 
