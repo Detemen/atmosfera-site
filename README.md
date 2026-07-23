@@ -8,6 +8,10 @@
 
 Interactive 3D globe showing live global air quality (AQI, PM2.5, PM10, NO₂, O₃) — built with React Three Fiber, drill down from world → continent → country → city, or search any city directly. Data comes from [Open-Meteo](https://open-meteo.com/) (CAMS air quality model), no API key required.
 
+**[▶ Live demo](https://detemen.github.io/atmosfera-site/)**
+
+![Screenshot](docs/screenshot.png)
+
 ## What this was
 
 Originally generated on OpenAI's "Sites" platform (Next.js + [vinext](https://github.com/cloudflare/vinext) + Cloudflare Workers, with ChatGPT sign-in and D1/R2 bindings scaffolded in). None of that hosting-specific plumbing is used here — this repo is the app itself, ported to a plain static Vite + React SPA so it can run and deploy anywhere.
